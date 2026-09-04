@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Oila Budjeti — daromad va xarajatlarni boshqarish ilovasi">
+    <meta name="theme-color" content="#171b3b">
+    <title>Oila Budjeti</title>
+
+    <style>
+        :root {
+            --primary:#6758e8; --primary-dark:#4034b5; --dark:#18213f;
+            --muted:#77829b; --bg:#eef1fb; --white:#fff; --border:#e4e7f2;
+            --green:#0ca36b; --red:#df4e64; --shadow:0 14px 35px #282f5f1a;
+            --radius:20px;
+        }
+
+        * { box-sizing:border-box; }
+        body {
+            margin:0; min-height:100vh; color:var(--dark);
+            font-family:Inter,Arial,sans-serif;
+            background:
+                radial-gradient(circle at 8% 5%,#c9c5ff 0,transparent 28%),
+                radial-gradient(circle at 95% 10%,#c7f3e1 0,transparent 25%),
+                linear-gradient(135deg,#f8f9ff,#edf0fa 55%,#f8faff);
+        }
+        body:before {
+            content:""; position:fixed; inset:0; z-index:-1; opacity:.22;
+            background-image:linear-gradient(#fff 1px,transparent 1px),
+                             linear-gradient(90deg,#fff 1px,transparent 1px);
+            background-size:34px 34px; pointer-events:none;
+        }
+
+        button,input,select { font:inherit; }
+        button { cursor:pointer; }
+        input,select {
+            width:100%; padding:13px 14px; color:var(--dark);
+            border:1px solid var(--border); border-radius:12px;
+            outline:0; background:#fafbff;
+        }
+        input:focus,select:focus {
+            border-color:var(--primary); box-shadow:0 0 0 4px #6757e822;
+        }
+
+        .topbar {
+            position:sticky; top:0; z-index:10; height:74px; padding:0 5%;
+            display:flex; align-items:center; gap:15px; color:white;
+            background:linear-gradient(115deg,#151b3b,#5348ae 60%,#7668e8);
+            box-shadow:0 10px 30px #1d254d55;
+        }
+        .topbar h1 { margin:0; font-size:22px; }
+        .menu-button {
+            width:45px; height:45px; padding:10px; border:0;
+            border-radius:14px; background:#ffffff22;
+        }
+        .menu-button span {
+            display:block; height:3px; margin:4px 0;
+            border-radius:5px; background:white;
+        }
+
+        .overlay {
+            position:fixed; inset:0; z-index:19; display:none;
+            background:#11152a99;
+        }
+        .sidebar {
+            position:fixed; top:0; left:-330px; z-index:20; width:310px;
+            height:100vh; padding:25px 18px; background:white;
+            box-shadow:10px 0 35px #0003; transition:left .25s ease;
+        }
+        .sidebar.open { left:0; }
+        .sidebar.open + .overlay { display:block; }
+        .sidebar-title {
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:28px;
+        }
+        .sidebar-title h2 { margin:0; color:var(--primary); }
+        .close-menu {
+            border:0; color:var(--muted); background:transparent; font-size:31px;
+        }
+        .nav-link {
+            display:block; width:100%; margin:10px 0; padding:15px;
+            color:var(--dark); text-align:left; border:0; border-radius:14px;
+            background:#f4f5fb; transition:.2s;
+        }
+        .nav-link:hover,.nav-link.active {
+            color:white; background:linear-gradient(120deg,var(--primary),#8978f2);
+            transform:translateX(4px);
+        }
+
+        main { width:min(1160px,92%); min-height:calc(100vh - 150px); margin:30px auto; }
+        .screen { display:none; }
+        .screen.active { display:block; animation:appear .25s ease; }
+        @keyframes appear {
+            from { opacity:0; transform:translateY(8px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+
+        .hero {
+            position:relative; overflow:hidden; padding:40px; color:white;
+            border-radius:30px;
+            background:linear-gradient(120deg,#3931c9,#8065e9 75%);
+            box-shadow:var(--shadow);
+        }
+        .hero:after {
+            content:"₿"; position:absolute; right:35px; bottom:-30px;
+            color:#ffffff22; font-size:165px; font-weight:bold;
+        }
+        .hero h2,.hero p,.date-label { position:relative; z-index:1; }
+        .hero h2 { margin:0 0 10px; font-size:30px; }
+        .hero p,.date-label { margin:0; opacity:.9; }
+        .date-label { margin-top:23px; font-size:14px; }
+
+        .cards {
+            display:grid; grid-template-columns:repeat(3,1fr); gap:17px; margin:22px 0;
+        }
+        .card,.panel,.category-card {
+            border:1px solid var(--border); border-radius:var(--radius);
+            background:#fffffff2; box-shadow:var(--shadow);
+        }
+        .card { position:relative; overflow:hidden; padding:22px; }
+        .card:after {
+            content:""; position:absolute; right:-25px; bottom:-35px;
+            width:115px; height:115px; border-radius:50%; background:#6658e815;
+        }
+        .card h3 { margin:0; color:var(--muted); font-size:14px; }
+        .card strong { display:block; margin-top:12px; font-size:22px; }
+        .income strong { color:var(--green); }
+        .expense strong { color:var(--red); }
+        .balance strong { color:var(--primary); }
+        .panel { padding:24px; }
+        .panel h2,.panel h3 { margin-top:0; }
+        .section-title { margin:30px 0 15px; }
+
+        .money-panels {
+            display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px;
+        }
+        .money-panels .panel:first-child { border-top:4px solid var(--green); }
+        .money-panels .panel:last-child { border-top:4px solid var(--red); }
+
+        .form-row {
+            display:grid; grid-template-columns:1fr 210px; gap:13px; align-items:end;
+        }
+        label {
+            display:block; margin:10px 0 7px; color:var(--muted);
+            font-size:14px; font-weight:bold;
+        }
+        .primary-button,.danger-button,.secondary-button {
+            width:100%; padding:13px 16px; border:0; border-radius:12px;
+            font-weight:bold; transition:.2s;
+        }
+        .primary-button {
+            color:white; background:linear-gradient(120deg,var(--primary),#8372ee);
+        }
+        .danger-button {
+            color:white; background:linear-gradient(120deg,var(--red),#f17b88);
+        }
+        .secondary-button {
+            color:var(--primary); border:1px solid #d9d5ff; background:#f6f4ff;
+        }
+        .primary-button:hover,.danger-button:hover,.secondary-button:hover {
+            transform:translateY(-2px); filter:brightness(.96);
+        }
+        .hint,.empty { color:var(--muted); font-size:14px; }
+
+        .category-toolbar {
+            display:grid; grid-template-columns:1fr 210px; gap:13px;
+            margin-bottom:18px; padding:17px; border:1px solid var(--border);
+            border-radius:17px; background:#ffffffcc; box-shadow:0 8px 25px #3331;
+        }
+        .category-grid {
+            display:grid; grid-template-columns:repeat(3,1fr); gap:18px;
+        }
+        .category-card { position:relative; padding:20px; transition:.2s; }
+        .category-card:hover {
+            transform:translateY(-4px); box-shadow:0 24px 48px #29305a2b;
+        }
+        .category-card h3 { margin:0; padding-right:27px; color:var(--primary); }
+        .category-icon {
+            display:inline-grid; width:34px; height:34px; place-items:center;
+            margin-right:6px; border-radius:11px; background:#f0eeff;
+        }
+        .delete-category {
+            position:absolute; top:12px; right:13px; width:25px; height:25px;
+            padding:0; color:var(--red); border:0; border-radius:50%;
+            background:#ffecef; font-size:18px;
+        }
+        .delete-category:hover { color:white; background:var(--red); }
+        .category-total { margin:13px 0 17px; color:var(--red); font-weight:bold; }
+        .expense-form { padding-top:8px; border-top:1px solid var(--border); }
+        .expense-form .primary-button { margin-top:15px; }
+        .view-products {
+            width:100%; margin-top:12px; padding:10px; color:var(--primary);
+            border:1px solid #d9d5ff; border-radius:10px; background:#f6f4ff;
+        }
+        .view-products:hover { color:white; background:var(--primary); }
+        .products { display:none; }
+        .products.visible { display:block; }
+        .product-list { margin:17px 0 0; padding:0; list-style:none; }
+        .product-list li {
+            display:flex; justify-content:space-between; gap:10px;
+            padding:10px 0; border-top:1px solid var(--border); font-size:14px;
+        }
+        .product-list span:last-child {
+            color:var(--red); font-weight:bold; white-space:nowrap;
+        }
+        .quantity-text {
+            display:block; margin-top:3px; color:var(--muted); font-size:12px;
+        }
+
+        .mini-chart-panel { margin-top:22px; }
+        .mini-chart-area { display:flex; align-items:center; gap:22px; }
+        .mini-chart,.chart {
+            border-radius:50%; background:conic-gradient(#e8eaf2 0 100%);
+            box-shadow:inset 0 0 0 28px white,0 8px 22px #30345a20;
+        }
+        .mini-chart { flex:0 0 150px; width:150px; height:150px; }
+        .mini-legend { display:grid; gap:8px; width:100%; }
+        .legend-item { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+        .legend-color { flex:0 0 12px; width:12px; height:12px; border-radius:4px; }
+
+        .finish-day {
+            margin:35px 0 20px; padding:24px; text-align:center;
+            border:1px solid #ffd6db; border-radius:21px;
+            background:linear-gradient(135deg,#fff7f8,#fff);
+        }
+        .finish-day h3 { margin-top:0; color:var(--red); }
+        .finish-day button { width:min(300px,100%); }
+
+        .confirm-box { max-width:620px; margin:35px auto; text-align:center; }
+        .confirm-actions { display:flex; gap:12px; margin-top:24px; }
+        .confirm-actions button { flex:1; }
+        .history-buttons {
+            display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+            gap:13px;
+        }
+        .month-button {
+            padding:17px; color:var(--dark); text-align:left; border:1px solid var(--border);
+            border-radius:14px; background:white; box-shadow:var(--shadow);
+        }
+        .month-button:hover,.month-button.selected {
+            color:white; background:linear-gradient(120deg,var(--primary),#8876f0);
+        }
+        .month-button strong,.month-button small { display:block; }
+        .month-button small { margin-top:8px; opacity:.75; }
+        .history-detail { margin-top:22px; }
+        .history-category {
+            margin-top:16px; padding:16px; border:1px solid var(--border);
+            border-radius:12px; background:#fafbff;
+        }
+        .history-category h4 { margin:0 0 10px; color:var(--primary); }
+        .chart-wrap {
+            display:grid; grid-template-columns:210px 1fr; align-items:center;
+            gap:25px; margin-top:20px;
+        }
+        .chart { width:190px; height:190px; margin:auto; box-shadow:inset 0 0 0 35px white,0 10px 25px #30345a20; }
+        .pdf-button { width:auto; margin-top:15px; }
+        .delete-income-button {
+            width:100%; margin-top:28px; padding:14px; color:var(--red);
+            border:1px solid #ffcbd2; border-radius:13px; background:#fff3f5;
+            font-weight:bold;
+        }
+        .delete-income-button:hover { color:white; background:var(--red); }
+        footer { padding:28px; color:var(--muted); text-align:center; }
+
+        @media(max-width:850px) {
+            .cards,.category-grid { grid-template-columns:repeat(2,1fr); }
+        }
+        @media(max-width:620px) {
+            main { width:94%; margin:20px auto; }
+            .cards,.category-grid,.form-row,.category-toolbar,.money-panels { grid-template-columns:1fr; }
+            .hero { padding:28px; }
+            .hero h2 { font-size:24px; }
+            .confirm-actions,.mini-chart-area { flex-direction:column; }
+            .chart-wrap { grid-template-columns:1fr; }
+        }
+        @media print {
+            body { background:white; }
+            .topbar,.sidebar,.overlay,footer,.no-print { display:none!important; }
+            main { width:100%; margin:0; }
+            .screen { display:none!important; }
+            #history.active { display:block!important; }
+            .panel,.card { box-shadow:none; }
+        }
+    </style>
+</head>
+
+<body>
+<header class="topbar">
+    <button class="menu-button" id="openMenu" aria-label="Menyuni ochish">
+        <span></span><span></span><span></span>
+    </button>
+    <h1>Oila Budjeti</h1>
+</header>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-title">
+        <h2>Menyu</h2>
+        <button class="close-menu" id="closeMenu">×</button>
+    </div>
+    <button class="nav-link active" data-screen="home">🏠 Asosiy</button>
+    <button class="nav-link" data-screen="new-day">➕ Yangi kun</button>
+    <button class="nav-link" data-screen="history">🗂 Tarix</button>
+</aside>
+<div class="overlay" id="overlay"></div>
+
+<main>
+<section class="screen active" id="home">
+    <div class="hero">
+        <h2>Oila budjetiga xush kelibsiz!</h2>
+        <p>Daromad va xarajatlaringizni qulay boshqaring.</p>
+        <div class="date-label" id="currentDate"></div>
+    </div>
+
+    <section class="cards">
+        <div class="card income"><h3>Shu oy qo‘shilgan pul</h3><strong id="incomeTotal">0 so‘m</strong></div>
+        <div class="card expense"><h3>Shu oy xarajatlari</h3><strong id="expenseTotal">0 so‘m</strong></div>
+        <div class="card balance"><h3>Oylik qolgan pul</h3><strong id="balanceTotal">0 so‘m</strong></div>
+    </section>
+
+    <section class="money-panels">
+        <div class="panel">
+            <h2>💰 Pul qo‘shish</h2>
+            <form id="incomeForm" class="form-row">
+                <div><label for="incomeInput">Pul miqdori</label><input id="incomeInput" type="number" min="1" required></div>
+                <button class="primary-button" type="submit">＋ Qo‘shish</button>
+            </form>
+        </div>
+        <div class="panel">
+            <h2>💸 Pul ayirish</h2>
+            <form id="withdrawForm" class="form-row">
+                <div><label for="withdrawInput">Ayiriladigan pul miqdori</label><input id="withdrawInput" type="number" min="1" required></div>
+                <button class="danger-button" type="submit">− Ayirish</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="panel mini-chart-panel">
+        <h2>📊 Bo‘limlar bo‘yicha xarajatlar</h2>
+        <p class="hint">Qaysi bo‘limga qancha sarflanganini ko‘ring.</p>
+        <div class="mini-chart-area">
+            <div class="mini-chart" id="miniChart"></div>
+            <div class="mini-legend" id="miniLegend"></div>
+        </div>
+    </section>
+
+    <h2 class="section-title">Xarajat bo‘limlari</h2>
+    <div class="category-toolbar">
+        <input id="searchInput" type="search" placeholder="🔎 Mahsulot yoki bo‘limni qidiring...">
+        <select id="sortSelect">
+            <option value="newest">Yangilari avval</option>
+            <option value="oldest">Eskilari avval</option>
+            <option value="cheap">Arzonidan boshlab</option>
+            <option value="expensive">Qimmatidan boshlab</option>
+            <option value="name">Nomi bo‘yicha</option>
+        </select>
+    </div>
+
+    <section class="category-grid" id="categories"></section>
+
+    <section class="panel" style="margin-top:18px">
+        <h2>Yangi bo‘lim qo‘shish</h2>
+        <form id="categoryForm" class="form-row">
+            <div><label for="categoryInput">Bo‘lim nomi</label><input id="categoryInput" required placeholder="Masalan: Transport"></div>
+            <button class="primary-button" type="submit">＋ Bo‘lim qo‘shish</button>
+        </form>
+    </section>
+
+    <section class="finish-day">
+        <h3>Bugungi kunni tugatish</h3>
+        <p class="hint">Bugungi ma’lumotlar tarixda saqlanadi.</p>
+        <button class="danger-button" id="finishDayButton" type="button">Kunni tugatish</button>
+    </section>
+</section>
+
+<section class="screen" id="new-day">
+    <div class="panel confirm-box">
+        <h2>Yangi kun boshlash</h2>
+        <p>Yangi kun avvalgi kun mahsulotlarisiz boshlanadi.</p>
+        <p class="hint">Avvalgi ma’lumotlar Tarix bo‘limida qoladi.</p>
+        <div class="confirm-actions">
+            <button class="primary-button" id="startDay" type="button">Ha, yangi kun boshlash</button>
+            <button class="danger-button" id="cancelDay" type="button">Bekor qilish</button>
+        </div>
+        <p class="hint" id="dayMessage"></p>
+    </div>
+</section>
+
+<section class="screen" id="history">
+    <h2>Tarix va tahlil</h2>
+    <div class="panel">
+        <p class="hint">Oy tanlang — xarajatlar va diagramma ko‘rsatiladi.</p>
+        <div class="history-buttons" id="historyButtons"></div>
+        <div class="history-detail" id="historyDetail"></div>
+        <button class="delete-income-button no-print" id="deleteAllIncome" type="button">
+            🗑 Barcha daromadlarni o‘chirish
+        </button>
+    </div>
+</section>
+</main>
+
+<footer>© 2026 Oila Budjeti</footer>
+
+<script>
+const money=v=>new Intl.NumberFormat("uz-UZ").format(Math.round(Number(v)||0))+" so‘m";
+const months=["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+const colors=["#6758e8","#10a56c","#df4e64","#ed9c18","#3187ed","#c056d9","#14a6a6","#7b879d"];
+const icons={"Oziq-ovqat":"🍎","Kiyim":"👕","Markaziy bozor":"🛒","Kommunal to‘lovlar":"💡","Transport":"🚕","Dori-darmon":"💊"};
+const dateKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const monthKey=d=>dateKey(d).slice(0,7);
+const monthTitle=k=>{let [y,m]=k.split("-");return `${months[+m-1]} ${y}`};
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+
+let data=JSON.parse(localStorage.getItem("oilaBudjetiV2"))||{
+    categories:["Oziq-ovqat","Kiyim","Markaziy bozor","Kommunal to‘lovlar"],
+    days:[],currentDayId:null,monthlyIncome:{},monthlyWithdrawals:{}
+};
+data.categories||=[]; data.days||=[]; data.monthlyIncome||={}; data.monthlyWithdrawals||={};
+if(!data.categories.includes("Kommunal to‘lovlar")) data.categories.push("Kommunal to‘lovlar");
+data.days.forEach(d=>{
+    d.expenses||=[];
+    d.expenses.forEach(i=>{
+        i.quantity=Number(i.quantity)||1;
+        i.unitPrice=Number(i.unitPrice||i.price)||0;
+        i.price=i.unitPrice*i.quantity;
+    });
+});
+const save=()=>localStorage.setItem("oilaBudjetiV2",JSON.stringify(data));
+
+function createDay(){
+    let d=new Date(),day={id:Date.now()+Math.random(),date:dateKey(d),month:monthKey(d),expenses:[],finished:false};
+    data.days.push(day);data.currentDayId=day.id;save();return day;
+}
+function currentDay(){
+    let d=data.days.find(x=>x.id===data.currentDayId);
+    return d&&!d.finished?d:createDay();
+}
+const expenses=d=>d.expenses.reduce((s,i)=>s+Number(i.price||0),0);
+const monthExpenses=m=>data.days.filter(d=>d.month===m).reduce((s,d)=>s+expenses(d),0);
+const balance=m=>Number(data.monthlyIncome[m]||0)-Number(data.monthlyWithdrawals[m]||0)-monthExpenses(m);
+
+function summary(){
+    let m=monthKey(new Date());
+    incomeTotal.textContent=money(data.monthlyIncome[m]);
+    expenseTotal.textContent=money(monthExpenses(m));
+    balanceTotal.textContent=money(balance(m));
+}
+function chartData(list){
+    let totals={};
+    list.flatMap(d=>d.expenses).forEach(i=>totals[i.category]=(totals[i.category]||0)+Number(i.price||0));
+    return Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+}
+function drawMini(){
+    let e=chartData(data.days.filter(d=>d.month===monthKey(new Date()))),total=e.reduce((s,x)=>s+x[1],0),p=0;
+    miniChart.style.background=`conic-gradient(${total?e.map((x,i)=>{let a=p;p+=x[1]/total*100;return `${colors[i%colors.length]} ${a}% ${p}%`}).join(","):"#e8eaf2 0 100%"})`;
+    miniLegend.innerHTML=e.length?e.map((x,i)=>`<div class="legend-item"><i class="legend-color" style="background:${colors[i%colors.length]}"></i>${esc(x[0])} — ${money(x[1])}</div>`).join(""):`<p class="empty">Hali xarajat kiritilmagan.</p>`;
+}
+function itemsFor(list){
+    let q=searchInput.value.trim().toLowerCase(),s=sortSelect.value;
+    return list.filter(i=>i.name.toLowerCase().includes(q)||i.category.toLowerCase().includes(q)).sort((a,b)=>{
+        if(s==="cheap")return a.price-b.price;if(s==="expensive")return b.price-a.price;
+        if(s==="name")return a.name.localeCompare(b.name,"uz");
+        return s==="oldest"?a.date.localeCompare(b.date):b.date.localeCompare(a.date);
+    });
+}
+function renderCategories(){
+    let d=currentDay(),q=searchInput.value.trim().toLowerCase();categories.innerHTML="";
+    data.categories.forEach(cat=>{
+        let all=d.expenses.filter(i=>i.category===cat),items=itemsFor(all);
+        if(q&&!cat.toLowerCase().includes(q)&&!items.length)return;
+        let card=document.createElement("article");
+        card.className="category-card";
+        card.innerHTML=`<button class="delete-category" title="Bo‘limni o‘chirish">×</button>
+        <h3><span class="category-icon">${icons[cat]||"📁"}</span>${esc(cat)}</h3>
+        <div class="category-total">${money(expenses({expenses:all}))}</div>
+        <form class="expense-form"><label>Mahsulot yoki to‘lov nomi</label><input name="name" required>
+        <label>Bir dona narxi</label><input name="price" type="number" min="1" required>
+        <label>Miqdori</label><input name="quantity" type="number" min="1" step="1" value="1" required>
+        <button class="primary-button" type="submit">＋ Savatga qo‘shish</button></form>
+        <button class="view-products" type="button">Mahsulotlarni ko‘rish (${items.length})</button>
+        <div class="products"><ul class="product-list">${items.length?items.map(i=>`<li><span>${esc(i.name)}<small class="quantity-text">${i.quantity} dona × ${money(i.unitPrice)}</small></span><span>${money(i.price)}</span></li>`).join(""):`<li class="empty">Mos mahsulot topilmadi</li>`}</ul></div>`;
+        card.querySelector(".delete-category").onclick=()=>{
+            if(confirm(`“${cat}” bo‘limi o‘chirilsinmi?`)){data.categories=data.categories.filter(x=>x!==cat);save();renderAll()}
+        };
+        card.querySelector(".view-products").onclick=e=>{
+            let p=card.querySelector(".products");p.classList.toggle("visible");
+            e.target.textContent=p.classList.contains("visible")?`Mahsulotlarni yashirish (${items.length})`:`Mahsulotlarni ko‘rish (${items.length})`;
+        };
+        card.querySelector("form").onsubmit=e=>{
+            e.preventDefault();let f=e.target,n=f.name.value.trim(),u=+f.price.value,q=+f.quantity.value;
+            if(!n||u<1||q<1)return;
+            d.expenses.push({category:cat,name:n,unitPrice:u,quantity:q,price:u*q,date:dateKey(new Date())});
+            save();renderAll();
+        };
+        categories.appendChild(card);
+    });
+    if(!categories.children.length)categories.innerHTML=`<div class="panel"><p class="empty">Qidiruv bo‘yicha hech narsa topilmadi.</p></div>`;
+}
+function historyChart(m){
+    let e=chartData(data.days.filter(d=>d.finished&&d.month===m)),total=e.reduce((s,x)=>s+x[1],0),p=0;
+    let g=total?e.map((x,i)=>{let a=p;p+=x[1]/total*100;return `${colors[i%colors.length]} ${a}% ${p}%`}).join(","):"#e8eaf2 0 100%";
+    return `<div class="chart-wrap"><div class="chart" style="background:conic-gradient(${g})"></div><div>${e.map((x,i)=>`<div class="legend-item"><i class="legend-color" style="background:${colors[i%colors.length]}"></i>${esc(x[0])} — ${money(x[1])}</div>`).join("")||'<p class="empty">Ma’lumot yo‘q.</p>'}</div></div>`;
+}
+function showHistory(m){
+    let days=data.days.filter(d=>d.finished&&d.month===m).sort((a,b)=>b.date.localeCompare(a.date));
+    document.querySelectorAll(".month-button").forEach(b=>b.classList.toggle("selected",b.dataset.month===m));
+    historyDetail.innerHTML=`<div class="panel"><h3>${monthTitle(m)} hisoboti</h3>
+    <p><b>Qo‘shilgan pul:</b> ${money(data.monthlyIncome[m])}</p><p><b>Ayirilgan pul:</b> ${money(data.monthlyWithdrawals[m])}</p>
+    <p><b>Xarajatlar:</b> ${money(monthExpenses(m))}</p><p><b>Qolgan pul:</b> ${money(balance(m))}</p>
+    <button class="primary-button pdf-button no-print" onclick="window.print()">📄 PDF qilib saqlash</button>
+    <h3 style="margin-top:28px">Bo‘limlar bo‘yicha diagramma</h3>${historyChart(m)}
+    ${days.map(d=>`<div class="history-category"><h4>${d.date} kuni</h4><p><b>Kunlik xarajat:</b> ${money(expenses(d))}</p>
+    ${Object.entries(d.expenses.reduce((o,i)=>{(o[i.category]??=[]).push(i);return o},{})).map(([c,is])=>`<div class="history-category"><h4>${esc(c)}</h4><ul class="product-list">${is.map(i=>`<li><span>${esc(i.name)}<small class="quantity-text">${i.quantity} dona × ${money(i.unitPrice)}</small></span><span>${money(i.price)}</span></li>`).join("")}</ul></div>`).join("")||'<p class="empty">Xarajat kiritilmagan.</p>'}</div>`).join("")}</div>`;
+}
+function renderHistory(){
+    let old=data.days.filter(d=>d.finished),months=[...new Set(old.map(d=>d.month))].sort().reverse();
+    historyButtons.innerHTML=months.length?months.map(m=>`<button class="month-button" data-month="${m}"><strong>${monthTitle(m)}</strong><small>${old.filter(d=>d.month===m).length} kun · ${money(monthExpenses(m))}</small></button>`).join(""):`<p class="empty">Hali tugatilgan kunlar mavjud emas.</p>`;
+    historyButtons.querySelectorAll("[data-month]").forEach(b=>b.onclick=()=>showHistory(b.dataset.month));
+    historyDetail.innerHTML="";
+}
+function renderAll(){summary();drawMini();renderCategories();renderHistory()}
+function openScreen(id){
+    document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id));
+    document.querySelectorAll(".nav-link").forEach(n=>n.classList.toggle("active",n.dataset.screen===id));
+    sidebar.classList.remove("open");scrollTo({top:0,behavior:"smooth"});
+}
+
+openMenu.onclick=()=>sidebar.classList.add("open");
+closeMenu.onclick=()=>sidebar.classList.remove("open");
+overlay.onclick=()=>sidebar.classList.remove("open");
+document.querySelectorAll(".nav-link").forEach(n=>n.onclick=()=>openScreen(n.dataset.screen));
+searchInput.oninput=renderCategories;sortSelect.onchange=renderCategories;
+
+incomeForm.onsubmit=e=>{
+    e.preventDefault();let a=+incomeInput.value,m=monthKey(new Date());
+    if(a>0){currentDay();data.monthlyIncome[m]=(data.monthlyIncome[m]||0)+a;incomeInput.value="";save();renderAll()}
+};
+withdrawForm.onsubmit=e=>{
+    e.preventDefault();let a=+withdrawInput.value,m=monthKey(new Date());
+    if(a>0&&a<=balance(m)){data.monthlyWithdrawals[m]=(data.monthlyWithdrawals[m]||0)+a;withdrawInput.value="";save();renderAll()}
+    else if(a>balance(m))alert("Ayiriladigan pul qolgan puldan ko‘p bo‘lishi mumkin emas.");
+};
+categoryForm.onsubmit=e=>{
+    e.preventDefault();let n=categoryInput.value.trim();
+    if(n&&!data.categories.includes(n)){data.categories.push(n);save();renderCategories()}
+    categoryInput.value="";
+};
+finishDayButton.onclick=()=>{
+    if(confirm("Bugungi kunni tugatishga aminmisiz?")){currentDay().finished=true;save();openScreen("new-day");dayMessage.textContent="Bugungi kun tarixga saqlandi."}
+};
+startDay.onclick=()=>{let d=currentDay();d.finished=true;let n=createDay();dayMessage.textContent=`Yangi kun boshlandi: ${n.date}`;renderAll();openScreen("home")};
+cancelDay.onclick=()=>openScreen("home");
+
+deleteAllIncome.onclick=()=>{
+    if(confirm("Barcha oylar bo‘yicha daromadlar butunlay o‘chirilsinmi?")){
+        data.monthlyIncome={};save();renderAll();alert("Barcha daromadlar o‘chirildi.");
+    }
+};
+
+let now=new Date();
+currentDate.textContent=`Bugun: ${now.getDate()}-${months[now.getMonth()]} ${now.getFullYear()}`;
+currentDay();save();renderAll();
+</script>
+</body>
+</html>
